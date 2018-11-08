@@ -28,8 +28,7 @@ export class AuthenticateActionProvider implements Provider<AuthenticateFn> {
     private readonly getController: Getter<Constructor<{}>>,
     @inject.getter(CoreBindings.CONTROLLER_METHOD_NAME)
     private readonly getMethod: Getter<string>,
-  )
-  {}
+  ) {}
 
   /**
    * @returns authenticateFn

@@ -3,10 +3,7 @@
 // This file is licensed under the MIT License.
 // License text available at https://opensource.org/licenses/MIT
 
-import {
-  Constructor,
-  MethodDecoratorFactory,
-} from '@loopback/context';
+import {Constructor, MethodDecoratorFactory} from '@loopback/context';
 import {AUTHENTICATION_METADATA_KEY} from '../keys';
 import {MetadataInspector} from '@loopback/metadata';
 
