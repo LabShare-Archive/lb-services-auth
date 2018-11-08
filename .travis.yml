@@ -1,0 +1,30 @@
+language: node_js
+node_js:
+  - lts/*
+  - node
+before_install:
+  - npm install -g nsp
+install:
+  - npm install
+script:
+  - nsp check
+  - npm run test
+  - codecov
+cache:
+  directories:
+    - ~/.npm
+notifications:
+  email: false
+branches:
+  except:
+    - /^v\d+\.\d+\.\d+$/
+jobs:
+  include:
+    - stage: release
+      node_js: lts/*
+      script: skip
+      deploy:
+        provider: script
+        skip_cleanup: true
+        script:
+          - npm run semantic-release
