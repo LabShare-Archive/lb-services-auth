@@ -11,7 +11,7 @@ import {MetadataInspector} from '@loopback/metadata';
  * Authentication metadata stored via Reflection API
  */
 export interface AuthenticationMetadata {
-  options?: Object;
+  scope?: string[];
 }
 
 /**
@@ -23,9 +23,7 @@ export interface AuthenticationMetadata {
 export function authenticate(options?: Object) {
   return MethodDecoratorFactory.createDecorator<AuthenticationMetadata>(
     AUTHENTICATION_METADATA_KEY,
-    {
-      options: options || {},
-    },
+    options || {},
   );
 }
 
