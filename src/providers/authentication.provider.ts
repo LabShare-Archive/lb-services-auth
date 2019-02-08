@@ -75,8 +75,6 @@ export class AuthenticateActionProvider implements Provider<AuthenticateFn> {
     const secret =
       secretProvider || jwksClient.expressJwtSecret(jwksClientOptions);
 
-    // TODO: validate scope based on decorator option
-
     // Validate JWT in Authorization Bearer header using RS256
     await new Promise((resolve, reject) => {
       jwt({
@@ -92,5 +90,43 @@ export class AuthenticateActionProvider implements Provider<AuthenticateFn> {
         resolve();
       });
     });
+
+    // Validate JWT Resource Scopes against one or more scopes required by the API.
+    // For example: 'read:users'
+    if (metadata.scope) {
+      this.validateResourceScopes(metadata.scope)(request, response);
+    }
+  }
+
+  /**
+   * @description Validates Resource Scopes required by an API definition against the user's bearer token scope claim.
+   * @param {string[]} expectedScopes
+   * @returns {(req: any, res: any) => (undefined | any)}
+   */
+  private validateResourceScopes(expectedScopes: string[]) {
+    const error = (res: any) => res.status(403).send('Insufficient scope');
+
+    if (!Array.isArray(expectedScopes)) {
+      throw new Error(
+        'Parameter expectedScopes must be an array of strings representing the scopes for the endpoint(s)',
+      );
+    }
+
+    return (req: any, res: any) => {
+      if (expectedScopes.length === 0) {
+        return;
+      }
+      if (!req.user || typeof req.user.scope !== 'string') {
+        return error(res);
+      }
+      const scopes = req.user.scope.split(' ');
+      const allowed = expectedScopes.some(scope => scopes.includes(scope));
+
+      if (allowed) {
+        return;
+      }
+
+      error(res);
+    };
   }
 }

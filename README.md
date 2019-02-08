@@ -66,6 +66,17 @@ const apispec = anOpenApiSpec()
       },
     },
   })
+  .withOperation('get', '/users', {
+      'x-operation-name': 'users',
+      responses: {
+        '200': {
+          description: '',
+          schema: {
+            type: 'string',
+          },
+        },
+      },
+    })
   .build();
 
 @api(apispec)
@@ -76,6 +87,15 @@ class MyController {
   async whoAmI(): Promise<string> {
     return 'authenticated data';
   }
+
+  // This route has an additional Resource Scope requirement. The user's bearer token will need to contain
+  // 'read:users' in the `scope` claim. Otherwise, they will receive a 403 in the response.
+  @authenticate({
+    scope: ['read:users']
+  })
+    async users(): Promise<string> {
+      return 'users';
+    }
 }
 
 app.controller(MyController);

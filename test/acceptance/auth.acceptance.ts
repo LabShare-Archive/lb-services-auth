@@ -125,12 +125,30 @@ describe('Basic Authentication', () => {
       .expect('authenticated result');
   });
 
-  it('returns error for invalid credentials', async () => {
+  it('authorizes an API with Resource Scope requirements', async () => {
+    const token = createToken('abc', 'read:users');
+    const client = whenIMakeRequestTo(server);
+    await client
+      .get('/users')
+      .set('Authorization', 'Bearer ' + token)
+      .expect('all users');
+  });
+
+  it('returns an error for invalid bearer tokens', async () => {
     const client = whenIMakeRequestTo(server);
     await client
       .get('/whoAmI')
       .set('Authorization', 'Bearer ' + 'invalid-token')
       .expect(401);
+  });
+
+  it('returns an error for bearer tokens missing required scope claims', async () => {
+    const token = createToken('abc');
+    const client = whenIMakeRequestTo(server);
+    await client
+      .get('/users')
+      .set('Authorization', 'Bearer ' + token)
+      .expect(403);
   });
 
   it('allows anonymous requests to methods with no decorator', async () => {
@@ -171,6 +189,17 @@ describe('Basic Authentication', () => {
           },
         },
       })
+      .withOperation('get', '/users', {
+        'x-operation-name': 'users',
+        responses: {
+          '200': {
+            description: '',
+            schema: {
+              type: 'string',
+            },
+          },
+        },
+      })
       .build();
 
     @api(apispec)
@@ -180,6 +209,13 @@ describe('Basic Authentication', () => {
       @authenticate()
       async whoAmI(): Promise<string> {
         return 'authenticated result';
+      }
+
+      @authenticate({
+        scope: ['read:users'],
+      })
+      async users(): Promise<string> {
+        return 'all users';
       }
     }
 
