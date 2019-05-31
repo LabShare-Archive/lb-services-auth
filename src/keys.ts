@@ -4,6 +4,7 @@
 import {BindingKey} from '@loopback/context';
 import {AuthenticationMetadata} from './decorators/authenticate.decorator';
 import {MetadataAccessor} from '@loopback/metadata';
+import {Request, Response} from 'express';
 
 /**
  * interface definition of a function which accepts a request

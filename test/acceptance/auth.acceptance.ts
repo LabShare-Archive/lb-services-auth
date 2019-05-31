@@ -59,7 +59,7 @@ describe('Basic Authentication', () => {
   function createToken(sub: string, scope = '', audience = defaultAudience) {
     return jws.sign(
       {
-        sub,
+        sub: () => sub,
         jti: 123456,
         azp: 123,
         scope,
