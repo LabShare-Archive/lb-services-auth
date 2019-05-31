@@ -12,7 +12,7 @@ import {
   RequestContext,
 } from '@loopback/rest';
 import {api, get} from '@loopback/openapi-v3';
-import {Client, createClientForHandler} from '@loopback/testlab';
+import {Client, createClientForHandler, expect} from '@loopback/testlab';
 import {anOpenApiSpec} from '@loopback/openapi-spec-builder';
 import {inject} from '@loopback/context';
 import {AuthenticateFn, AuthenticationBindings} from '../../src';
@@ -59,13 +59,13 @@ describe('Basic Authentication', () => {
   function createToken(sub: string, scope = '', audience = defaultAudience) {
     return jws.sign(
       {
-        sub: () => sub,
         jti: 123456,
         azp: 123,
         scope,
       },
       certificates.private,
       {
+        subject: sub,
         algorithm: 'RS256',
         expiresIn: '10m',
         issuer: 'issuer',
@@ -119,10 +119,10 @@ describe('Basic Authentication', () => {
   it('authenticates successfully for correct credentials', async () => {
     const token = createToken('abc');
     const client = whenIMakeRequestTo(server);
-    await client
+    const res = await client
       .get('/whoAmI')
-      .set('Authorization', 'Bearer ' + token)
-      .expect('authenticated result');
+      .set('Authorization', 'Bearer ' + token);
+    expect(res.body.sub).to.equal('abc');
   });
 
   it('authorizes an API with Resource Scope requirements', async () => {
@@ -204,11 +204,13 @@ describe('Basic Authentication', () => {
 
     @api(apispec)
     class MyController {
-      constructor() {}
+      constructor(
+        @inject(RestBindings.Http.REQUEST) public request: express.Request,
+      ) {}
 
       @authenticate()
-      async whoAmI(): Promise<string> {
-        return 'authenticated result';
+      async whoAmI(): Promise<any> {
+        return (this.request as any).user;
       }
 
       @authenticate({
