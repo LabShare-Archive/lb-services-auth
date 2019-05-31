@@ -10,6 +10,8 @@
 
 Register the component and register the configuration for the action by injecting `AuthenticationBindings.AUTH_CONFIG`:
 ```
+import { LbServicesAuthComponent } from '@labshare/lb-services-auth';
+
 app = new Application();
 app.component(LbServicesAuthComponent);
 app.bind(AuthenticationBindings.AUTH_CONFIG).to({
@@ -20,6 +22,11 @@ app.bind(AuthenticationBindings.AUTH_CONFIG).to({
 
 Inject the authentication action into the application sequence:
 ```
+import {
+  AuthenticationBindings,
+  AuthenticateFn
+} from "@labshare/lb-services-auth";
+
 class MySequence implements SequenceHandler {
   constructor(
     @inject(SequenceActions.FIND_ROUTE) protected findRoute: FindRoute,
@@ -54,6 +61,8 @@ class MySequence implements SequenceHandler {
 
 Use the `@authenticate` decorator for REST methods requiring authentication:
 ```
+import { authenticate } from "@labshare/lb-services-auth";
+
 const apispec = anOpenApiSpec()
   .withOperation('get', '/whoAmI', {
     'x-operation-name': 'whoAmI',
