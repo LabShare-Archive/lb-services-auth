@@ -24,10 +24,13 @@ export class AuthenticateActionProvider implements Provider<AuthenticateFn> {
     readonly getConfig: Getter<{
       [key: string]: any;
     }>,
-    @inject.getter(CoreBindings.CONTROLLER_CLASS)
+    @inject.getter(CoreBindings.CONTROLLER_CLASS, {optional: true})
     private readonly getController: Getter<Constructor<{}>>,
-    @inject.getter(CoreBindings.CONTROLLER_METHOD_NAME)
+    @inject.getter(CoreBindings.CONTROLLER_METHOD_NAME, {optional: true})
     private readonly getMethod: Getter<string>,
+
+    @inject.getter(AuthenticationBindings.SECRET_PROVIDER, {optional: true})
+    private readonly secretProvider: Getter<jwt.SecretCallback>,
   ) {}
 
   /**
@@ -52,19 +55,13 @@ export class AuthenticateActionProvider implements Provider<AuthenticateFn> {
       return;
     }
 
-    const {
-      authUrl,
-      secretProvider,
-      tenant,
-      audience,
-      issuer,
-    } = await this.getConfig();
+    const {authUrl, tenant, audience, issuer} = await this.getConfig();
 
-    if (!authUrl && !secretProvider) {
+    if (!authUrl && !this.secretProvider) {
       throw new Error('`authUrl` is required');
     }
 
-    if (!tenant && !secretProvider) {
+    if (!tenant && !this.secretProvider) {
       throw new Error('`tenant` is required');
     }
 
@@ -72,8 +69,10 @@ export class AuthenticateActionProvider implements Provider<AuthenticateFn> {
       ...defaultJwksClientOptions,
       jwksUri: `${authUrl}/auth/${tenant}/.well-known/jwks.json`,
     };
-    const secret =
-      secretProvider || jwksClient.expressJwtSecret(jwksClientOptions);
+
+    const secret: jwt.SecretCallback =
+      (await this.secretProvider()) ||
+      jwksClient.expressJwtSecret(jwksClientOptions);
 
     // Validate JWT in Authorization Bearer header using RS256
     await new Promise((resolve, reject) => {

@@ -5,9 +5,10 @@ import {BindingKey} from '@loopback/context';
 import {AuthenticationMetadata} from './decorators/authenticate.decorator';
 import {MetadataAccessor} from '@loopback/metadata';
 import {Request, Response} from 'express';
+import {SecretCallback} from 'express-jwt';
 
 /**
- * interface definition of a function which accepts a request
+ * Interface definition of a function which accepts a request
  * and returns an authenticated user
  */
 export interface AuthenticateFn {
@@ -77,6 +78,13 @@ export namespace AuthenticationBindings {
    * @type {BindingKey<any>}
    */
   export const AUTH_CONFIG = BindingKey.create<any>('authentication.config');
+
+  /**
+   * The key used to set the custom RS256/HS256 secret provider
+   */
+  export const SECRET_PROVIDER = BindingKey.create<SecretCallback>(
+    'authentication.secretProvider',
+  );
 }
 
 /**

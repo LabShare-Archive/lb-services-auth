@@ -11,6 +11,7 @@
 Register the component and register the configuration for the action by injecting `AuthenticationBindings.AUTH_CONFIG`:
 ```
 import { LbServicesAuthComponent } from '@labshare/lb-services-auth';
+import { CustomProvider } from 'my-custom.provider';
 
 app = new Application();
 app.component(LbServicesAuthComponent);
@@ -18,6 +19,9 @@ app.bind(AuthenticationBindings.AUTH_CONFIG).to({
   authUrl: 'https://a.labshare.org/_api',
   tenant: 'my-tenant'
 });
+
+// Assign a custom JWT secret provider (optional)
+app.bind(AuthenticationBindings.SECRET_PROVIDER).toProvider(CustomerProvider);
 ```
 
 Inject the authentication action into the application sequence:
