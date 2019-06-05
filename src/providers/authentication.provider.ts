@@ -28,9 +28,12 @@ export class AuthenticateActionProvider implements Provider<AuthenticateFn> {
     private readonly getController: Getter<Constructor<{}>>,
     @inject.getter(CoreBindings.CONTROLLER_METHOD_NAME, {optional: true})
     private readonly getMethod: Getter<string>,
-
     @inject.getter(AuthenticationBindings.SECRET_PROVIDER, {optional: true})
     private readonly secretProvider: Getter<jwt.SecretCallback>,
+    @inject.getter(AuthenticationBindings.IS_REVOKED_CALLBACK_PROVIDER, {
+      optional: true,
+    })
+    private readonly isRevokedCallbackProvider: Getter<jwt.IsRevokedCallback>,
   ) {}
 
   /**
@@ -73,11 +76,13 @@ export class AuthenticateActionProvider implements Provider<AuthenticateFn> {
     const secret: jwt.SecretCallback =
       (await this.secretProvider()) ||
       jwksClient.expressJwtSecret(jwksClientOptions);
+    const isRevoked = await this.isRevokedCallbackProvider();
 
     // Validate JWT in Authorization Bearer header using RS256
     await new Promise((resolve, reject) => {
       jwt({
         getToken: parseToken,
+        isRevoked,
         secret,
         audience, // Optionally validate the audience and the issuer
         issuer,

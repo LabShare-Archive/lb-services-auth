@@ -5,7 +5,7 @@ import {BindingKey} from '@loopback/context';
 import {AuthenticationMetadata} from './decorators/authenticate.decorator';
 import {MetadataAccessor} from '@loopback/metadata';
 import {Request, Response} from 'express';
-import {SecretCallback} from 'express-jwt';
+import {SecretCallback, IsRevokedCallback} from 'express-jwt';
 
 /**
  * Interface definition of a function which accepts a request
@@ -85,6 +85,13 @@ export namespace AuthenticationBindings {
   export const SECRET_PROVIDER = BindingKey.create<SecretCallback>(
     'authentication.secretProvider',
   );
+
+  /**
+   * The key used to set the custom RS256/HS256 secret provider
+   */
+  export const IS_REVOKED_CALLBACK_PROVIDER = BindingKey.create<
+    IsRevokedCallback
+  >('authentication.isRevokedCallbackProvider');
 }
 
 /**

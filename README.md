@@ -12,6 +12,7 @@ Register the component and register the configuration for the action by injectin
 ```
 import { LbServicesAuthComponent } from '@labshare/lb-services-auth';
 import { CustomProvider } from 'my-custom.provider';
+import { IsRevokedCallbackProvider} from 'is-revoked-callback.provider';
 
 app = new Application();
 app.component(LbServicesAuthComponent);
@@ -21,7 +22,10 @@ app.bind(AuthenticationBindings.AUTH_CONFIG).to({
 });
 
 // Assign a custom JWT secret provider (optional)
-app.bind(AuthenticationBindings.SECRET_PROVIDER).toProvider(CustomerProvider);
+app.bind(AuthenticationBindings.SECRET_PROVIDER).toProvider(CustomProvider);
+
+// Assign a custom revoked JWT check (optional)
+app.bind(AuthenticationBindings.IS_REVOKED_CALLBACK_PROVIDER).toProvider(IsRevokedCallbackProvider);
 ```
 
 Inject the authentication action into the application sequence:
