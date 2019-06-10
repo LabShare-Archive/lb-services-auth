@@ -37,6 +37,10 @@ export function getAuthenticateMetadata(
   controllerClass: Constructor<{}>,
   methodName: string,
 ): AuthenticationMetadata | undefined {
+  if (!controllerClass) {
+    return;
+  }
+
   return MetadataInspector.getMethodMetadata<AuthenticationMetadata>(
     AUTHENTICATION_METADATA_KEY,
     controllerClass.prototype,

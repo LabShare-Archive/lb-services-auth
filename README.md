@@ -8,9 +8,14 @@
 
 # Usage
 
-Register the component and register the configuration for the action by injecting `AuthenticationBindings.AUTH_CONFIG`:
+Register the component and register the configuration for the action by injecting `AuthenticationBindings.AUTH_CONFIG`.
+
+### Example
+
 ```
 import { LbServicesAuthComponent } from '@labshare/lb-services-auth';
+import { CustomProvider } from 'my-custom.provider';
+import { IsRevokedCallbackProvider} from 'is-revoked-callback.provider';
 
 app = new Application();
 app.component(LbServicesAuthComponent);
@@ -18,9 +23,18 @@ app.bind(AuthenticationBindings.AUTH_CONFIG).to({
   authUrl: 'https://a.labshare.org/_api',
   tenant: 'my-tenant'
 });
+
+// Assign a custom JWT secret provider (optional)
+app.bind(AuthenticationBindings.SECRET_PROVIDER).toProvider(CustomProvider);
+
+// Assign a custom revoked JWT check (optional)
+app.bind(AuthenticationBindings.IS_REVOKED_CALLBACK_PROVIDER).toProvider(IsRevokedCallbackProvider);
 ```
 
-Inject the authentication action into the application sequence:
+Inject the authentication action into the application sequence.
+
+### Example
+
 ```
 import {
   AuthenticationBindings,
@@ -59,12 +73,30 @@ class MySequence implements SequenceHandler {
 }
 ```
 
-Use the `@authenticate` decorator for REST methods requiring authentication:
+Use the `@authenticate` decorator for REST methods requiring authentication.
+
+## Options
+
+| Property | Type  | Details                                                                                                    |
+| :------- | :---: | :--------------------------------------------------------------------------------------------------------- |
+| scopes   | array | A list of one zero or more arbitrary Resource Scope definitions. Example: `['read:users', 'update:users']` |
+
+### Dynamic Scopes
+
+Dynamic path/query parameters can be injected into scope definitions using brackets. For example: [`read:users:{path.id}`, `update:users:{query.limit}`] assigned to a route such as `/users/{id}` would require the request's bearer token to contain a scope
+matching the `id` parameter in the route (for example: `'read:users:5'` if the request route is `/users/5`).
+
+### Example
+
 ```
 import { authenticate } from "@labshare/lb-services-auth";
 
-const apispec = anOpenApiSpec()
-  .withOperation('get', '/whoAmI', {
+@api({})
+class MyController {
+  constructor() {}
+
+  @authenticate()
+  @get('/whoAmI', {
     'x-operation-name': 'whoAmI',
     responses: {
       '200': {
@@ -75,24 +107,6 @@ const apispec = anOpenApiSpec()
       },
     },
   })
-  .withOperation('get', '/users', {
-      'x-operation-name': 'users',
-      responses: {
-        '200': {
-          description: '',
-          schema: {
-            type: 'string',
-          },
-        },
-      },
-    })
-  .build();
-
-@api(apispec)
-class MyController {
-  constructor() {}
-
-  @authenticate()
   async whoAmI(): Promise<string> {
     return 'authenticated data';
   }
@@ -102,9 +116,34 @@ class MyController {
   @authenticate({
     scope: ['read:users']
   })
-    async users(): Promise<string> {
-      return 'users';
+  @get('/users', {
+    'x-operation-name': 'users',
+    responses: {
+      '200': {
+        description: '',
+        schema: {
+          type: 'string',
+        },
+      },
     }
+  })
+  async users(): Promise<string> {
+    return 'users';
+  }
+
+  // This route has a dynamic scope parameter for validation.
+  // The request will be unauthorized if the JWT does not contain the "tenantId", "someOtherParam" values in the route path and the "someParam" query parameter.
+  @authenticate({
+    scope: ['{path.tenantId}:read:users:{query.someParam}:{path.someOtherParam}']
+  })
+  @get('{tenantId}/users')
+  async users(
+    @param.path.string('tenantId') tenantId: string,
+    @param.path.number('someOtherParam') someOtherParam: number,
+    @param.query.boolean('someParam') someParam: boolean
+  ): Promise<string> {
+    return `${tenantId} users';
+  }
 }
 
 app.controller(MyController);

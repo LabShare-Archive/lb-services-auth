@@ -1,10 +1,18 @@
 import {Getter, Provider, inject, Constructor} from '@loopback/context';
-import {Request, Response} from '@loopback/rest';
+import {
+  Request,
+  Response,
+  SequenceActions,
+  ParseParams,
+  FindRoute,
+  ParameterObject,
+} from '@loopback/rest';
 import {AuthenticateFn, AuthenticationBindings} from '../keys';
 import * as jwksClient from 'jwks-rsa';
 import * as jwt from 'express-jwt';
 import parseToken from 'parse-bearer-token';
 import {CoreBindings} from '@loopback/core';
+import {get} from 'lodash';
 import {getAuthenticateMetadata} from '../decorators/authenticate.decorator';
 
 const defaultJwksClientOptions = {
@@ -12,6 +20,11 @@ const defaultJwksClientOptions = {
   rateLimit: true, // See: https://github.com/auth0/node-jwks-rsa#rate-limiting
   jwksRequestsPerMinute: 10,
 };
+
+interface ParsedParams {
+  path: {[key: string]: any};
+  query: {[key: string]: any};
+}
 
 /**
  * @description Provider of a function which authenticates
@@ -24,10 +37,19 @@ export class AuthenticateActionProvider implements Provider<AuthenticateFn> {
     readonly getConfig: Getter<{
       [key: string]: any;
     }>,
-    @inject.getter(CoreBindings.CONTROLLER_CLASS)
+    @inject.getter(CoreBindings.CONTROLLER_CLASS, {optional: true})
     private readonly getController: Getter<Constructor<{}>>,
-    @inject.getter(CoreBindings.CONTROLLER_METHOD_NAME)
+    @inject.getter(CoreBindings.CONTROLLER_METHOD_NAME, {optional: true})
     private readonly getMethod: Getter<string>,
+    @inject.getter(AuthenticationBindings.SECRET_PROVIDER, {optional: true})
+    private readonly secretProvider: Getter<jwt.SecretCallback>,
+    @inject.getter(AuthenticationBindings.IS_REVOKED_CALLBACK_PROVIDER, {
+      optional: true,
+    })
+    private readonly isRevokedCallbackProvider: Getter<jwt.IsRevokedCallback>,
+    @inject(SequenceActions.PARSE_PARAMS)
+    private readonly parseParams: ParseParams,
+    @inject(SequenceActions.FIND_ROUTE) private readonly findRoute: FindRoute,
   ) {}
 
   /**
@@ -52,19 +74,13 @@ export class AuthenticateActionProvider implements Provider<AuthenticateFn> {
       return;
     }
 
-    const {
-      authUrl,
-      secretProvider,
-      tenant,
-      audience,
-      issuer,
-    } = await this.getConfig();
+    const {authUrl, tenant, audience, issuer} = await this.getConfig();
 
-    if (!authUrl && !secretProvider) {
+    if (!authUrl && !this.secretProvider) {
       throw new Error('`authUrl` is required');
     }
 
-    if (!tenant && !secretProvider) {
+    if (!tenant && !this.secretProvider) {
       throw new Error('`tenant` is required');
     }
 
@@ -72,13 +88,17 @@ export class AuthenticateActionProvider implements Provider<AuthenticateFn> {
       ...defaultJwksClientOptions,
       jwksUri: `${authUrl}/auth/${tenant}/.well-known/jwks.json`,
     };
-    const secret =
-      secretProvider || jwksClient.expressJwtSecret(jwksClientOptions);
+
+    const secret: jwt.SecretCallback =
+      (await this.secretProvider()) ||
+      jwksClient.expressJwtSecret(jwksClientOptions);
+    const isRevoked = await this.isRevokedCallbackProvider();
 
     // Validate JWT in Authorization Bearer header using RS256
     await new Promise((resolve, reject) => {
       jwt({
         getToken: parseToken,
+        isRevoked,
         secret,
         audience, // Optionally validate the audience and the issuer
         issuer,
@@ -94,14 +114,13 @@ export class AuthenticateActionProvider implements Provider<AuthenticateFn> {
     // Validate JWT Resource Scopes against one or more scopes required by the API.
     // For example: 'read:users'
     if (metadata.scope) {
-      this.validateResourceScopes(metadata.scope)(request, response);
+      await this.validateResourceScopes(metadata.scope)(request, response);
     }
   }
 
   /**
    * @description Validates Resource Scopes required by an API definition against the user's bearer token scope claim.
    * @param {string[]} expectedScopes
-   * @returns {(req: any, res: any) => (undefined | any)}
    */
   private validateResourceScopes(expectedScopes: string[]) {
     const error = (res: any) => res.status(403).send('Insufficient scope');
@@ -112,15 +131,51 @@ export class AuthenticateActionProvider implements Provider<AuthenticateFn> {
       );
     }
 
-    return (req: any, res: any) => {
+    return async (req: any, res: any) => {
       if (expectedScopes.length === 0) {
         return;
       }
       if (!req.user || typeof req.user.scope !== 'string') {
         return error(res);
       }
+
+      const replaceValue = (parsedParamsObj: ParsedParams) => (
+        $0: string,
+        context: string,
+      ) => {
+        return get(parsedParamsObj, context);
+      };
+
+      const route = this.findRoute(req);
+      const args = await this.parseParams(req, route);
+      const params = route.spec.parameters;
+      const parsedParams: ParsedParams = {
+        path: {},
+        query: {},
+      };
+
+      if (params) {
+        for (let i = 0; i < args.length; ++i) {
+          const spec = params[i] as ParameterObject;
+          const paramIn = spec.in;
+          switch (paramIn) {
+            case 'path':
+            case 'query':
+              parsedParams[paramIn][spec.name] = args[i];
+              break;
+          }
+        }
+      }
+
+      // Fill in dynamic scope parameters with the request parameters.
+      // For example, "{path.tenantId}:read:users" becomes "ls:read:users" assuming
+      // "tenantId" is a path parameter.
+      const expandedScopes = expectedScopes.map((scope: string) => {
+        return scope.replace(/{([^}]+)}/g, replaceValue(parsedParams));
+      });
+
       const scopes = req.user.scope.split(' ');
-      const allowed = expectedScopes.some(scope => scopes.includes(scope));
+      const allowed = expandedScopes.some(scope => scopes.includes(scope));
 
       if (allowed) {
         return;
