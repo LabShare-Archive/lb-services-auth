@@ -9,6 +9,7 @@
 # Usage
 
 Register the component and register the configuration for the action by injecting `AuthenticationBindings.AUTH_CONFIG`:
+
 ```
 import { LbServicesAuthComponent } from '@labshare/lb-services-auth';
 import { CustomProvider } from 'my-custom.provider';
@@ -29,6 +30,7 @@ app.bind(AuthenticationBindings.IS_REVOKED_CALLBACK_PROVIDER).toProvider(IsRevok
 ```
 
 Inject the authentication action into the application sequence:
+
 ```
 import {
   AuthenticationBindings,
@@ -68,6 +70,7 @@ class MySequence implements SequenceHandler {
 ```
 
 Use the `@authenticate` decorator for REST methods requiring authentication:
+
 ```
 import { authenticate } from "@labshare/lb-services-auth";
 
@@ -110,9 +113,23 @@ class MyController {
   @authenticate({
     scope: ['read:users']
   })
-    async users(): Promise<string> {
-      return 'users';
-    }
+  async users(): Promise<string> {
+    return 'users';
+  }
+
+  // This route has a dynamic scope parameter for validation.
+  // It will block a JWT that does not contain the "tenantId", "someOtherParam" values in the route path and the "someParam" query parameter.
+  @authenticate({
+    scope: ['{path.tenantId}:read:users:{query.someParam}:{path.someOtherParam}']
+  })
+  @get('{tenantId}/users')
+  async users(
+    @param.path.string('tenantId') tenantId: string,
+    @param.path.number('someOtherParam') someOtherParam: number,
+    @param.query.boolean('someParam') someParam: boolean
+  ): Promise<string> {
+    return `${tenantId} users';
+  }
 }
 
 app.controller(MyController);

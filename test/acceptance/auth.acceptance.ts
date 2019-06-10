@@ -11,7 +11,7 @@ import {
   RestComponent,
   RequestContext,
 } from '@loopback/rest';
-import {api, get} from '@loopback/openapi-v3';
+import {api, get, param} from '@loopback/openapi-v3';
 import {Client, createClientForHandler, expect} from '@loopback/testlab';
 import {anOpenApiSpec} from '@loopback/openapi-spec-builder';
 import {inject} from '@loopback/context';
@@ -134,6 +134,15 @@ describe('Basic Authentication', () => {
       .expect('all users');
   });
 
+  it('authorizes an API by expanding dynamic resource scopes', async () => {
+    const token = createToken('ls:read:users', 'ls:update:users:100');
+    const client = whenIMakeRequestTo(server);
+    await client
+      .get('/ls/users?limit=100')
+      .set('Authorization', 'Bearer ' + token)
+      .expect(`received 100 users from tenant ls`);
+  });
+
   it('returns an error for invalid bearer tokens', async () => {
     const client = whenIMakeRequestTo(server);
     await client
@@ -218,6 +227,30 @@ describe('Basic Authentication', () => {
       })
       async users(): Promise<string> {
         return 'all users';
+      }
+
+      @authenticate({
+        scope: [
+          '{path.tenantId}:read:users',
+          '{path.tenantId}:update:users:{query.limit}',
+        ],
+      })
+      @get('/{tenantId}/users', {
+        'x-operation-name': 'users',
+        responses: {
+          '200': {
+            description: '',
+            schema: {
+              type: 'string',
+            },
+          },
+        },
+      })
+      async user(
+        @param.path.string('tenantId') tenantId: string,
+        @param.query.number('limit') limit: number,
+      ): Promise<string> {
+        return `received ${limit} users from tenant ${tenantId}`;
       }
     }
 
