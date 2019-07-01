@@ -1,3 +1,10 @@
+# [1.3.0](https://github.com/LabShare/lb-services-auth/compare/v1.2.0...v1.3.0) (2019-07-01)
+
+
+### Features
+
+* **authz:** add "authenticateController" class decorator ([f8fe219](https://github.com/LabShare/lb-services-auth/commit/f8fe219))
+
 # [1.2.0](https://github.com/LabShare/lb-services-auth/compare/v1.1.0...v1.2.0) (2019-07-01)
 
 
