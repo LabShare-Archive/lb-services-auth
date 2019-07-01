@@ -148,3 +148,4 @@ class MyController {
 
 app.controller(MyController);
 ```
+
