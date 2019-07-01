@@ -17,7 +17,10 @@ import {anOpenApiSpec} from '@loopback/openapi-spec-builder';
 import {inject} from '@loopback/context';
 import {AuthenticateFn, AuthenticationBindings} from '../../src';
 import {LbServicesAuthComponent} from '../../src';
-import {authenticate} from '../../src/decorators/authenticate.decorator';
+import {
+  authenticate,
+  authenticateController,
+} from '../../src/decorators/authenticate.decorator';
 import * as jws from 'jsonwebtoken';
 import {pem2jwk} from 'pem-jwk';
 import * as portfinder from 'portfinder';
@@ -117,7 +120,7 @@ describe('Basic Authentication', () => {
   beforeEach(givenAuthenticatedSequence);
 
   it('authenticates successfully for correct credentials', async () => {
-    const token = createToken('abc');
+    const token = createToken('abc', 'shared:scope');
     const client = whenIMakeRequestTo(server);
     const res = await client
       .get('/whoAmI')
@@ -126,7 +129,7 @@ describe('Basic Authentication', () => {
   });
 
   it('authorizes an API with Resource Scope requirements', async () => {
-    const token = createToken('abc', 'read:users');
+    const token = createToken('abc', 'shared:scope read:users');
     const client = whenIMakeRequestTo(server);
     await client
       .get('/users')
@@ -135,7 +138,10 @@ describe('Basic Authentication', () => {
   });
 
   it('authorizes an API by expanding dynamic resource scopes', async () => {
-    const token = createToken('ls:read:users', 'ls:update:users:100');
+    const token = createToken(
+      'ls:read:users',
+      'shared:scope ls:update:users:100',
+    );
     const client = whenIMakeRequestTo(server);
     await client
       .get('/ls/users?limit=100')
@@ -211,6 +217,9 @@ describe('Basic Authentication', () => {
       })
       .build();
 
+    @authenticateController({
+      scope: ['shared:scope'],
+    })
     @api(apispec)
     class MyController {
       constructor(
