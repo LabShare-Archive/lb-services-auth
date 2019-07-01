@@ -13,7 +13,10 @@ import * as jwt from 'express-jwt';
 import parseToken from 'parse-bearer-token';
 import {CoreBindings} from '@loopback/core';
 import {get} from 'lodash';
-import {getAuthenticateMetadata} from '../decorators/authenticate.decorator';
+import {
+  getAuthenticateMetadata,
+  getAuthenticateControllerMetadata,
+} from '../decorators/authenticate.decorator';
 
 const defaultJwksClientOptions = {
   cache: true,
@@ -65,12 +68,14 @@ export class AuthenticateActionProvider implements Provider<AuthenticateFn> {
    * @param response The response provided by the REST layer
    */
   async action(request: Request, response: Response): Promise<any> {
-    // If REST method is not decorated, we skip the authentication check
     const controller = await this.getController();
     const method = await this.getMethod();
+
+    const controllerMetadata = getAuthenticateControllerMetadata(controller);
     const metadata = getAuthenticateMetadata(controller, method);
 
-    if (!metadata) {
+    // If REST method or class is not decorated, we skip the authentication check
+    if (!metadata && !controllerMetadata) {
       return;
     }
 
@@ -111,10 +116,15 @@ export class AuthenticateActionProvider implements Provider<AuthenticateFn> {
       });
     });
 
+    const scope = [
+      ...((controllerMetadata && controllerMetadata.scope) || []),
+      ...((metadata && metadata.scope) || []),
+    ];
+
     // Validate JWT Resource Scopes against one or more scopes required by the API.
     // For example: 'read:users'
-    if (metadata.scope) {
-      await this.validateResourceScopes(metadata.scope)(request, response);
+    if (scope.length) {
+      await this.validateResourceScopes(scope)(request, response);
     }
   }
 

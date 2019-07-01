@@ -51,29 +51,6 @@ export namespace AuthenticationBindings {
   );
 
   /**
-   * Key used to inject authentication metadata, which is used to determine
-   * whether a request requires authentication or not.
-   *
-   * ```ts
-   * class MyPassportStrategyProvider implements Provider<Strategy | undefined> {
-   *   constructor(
-   *     @inject(AuthenticationBindings.METADATA)
-   *     private metadata: AuthenticationMetadata,
-   *   ) {}
-   *   value(): ValueOrPromise<Strategy | undefined> {
-   *     if (this.metadata) {
-   *       const name = this.metadata.strategy;
-   *       // logic to determine which authentication strategy to return
-   *     }
-   *   }
-   * }
-   * ```
-   */
-  export const METADATA = BindingKey.create<any>(
-    'authentication.operationMetadata',
-  );
-
-  /**
    * Key used to set configuration for the authentication action
    * @type {BindingKey<any>}
    */
@@ -95,9 +72,17 @@ export namespace AuthenticationBindings {
 }
 
 /**
- * The key used to store log-related via @loopback/metadata and reflection.
+ * The key used to store method authentication decorator metadata
  */
 export const AUTHENTICATION_METADATA_KEY = MetadataAccessor.create<
   AuthenticationMetadata,
   MethodDecorator
->('authentication.operationsMetadata');
+>('authentication.method.operationsMetadata');
+
+/**
+ * The key used to store controller authentication decorator metadata
+ */
+export const CONTROLLER_AUTHENTICATION_METADATA_KEY = MetadataAccessor.create<
+  AuthenticationMetadata,
+  ClassDecorator
+>('authentication.controller.operationsMetadata');
