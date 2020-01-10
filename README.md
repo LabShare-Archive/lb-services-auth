@@ -1,6 +1,6 @@
 # @labshare/lb-services-auth
 
-[![Build Status](https://travis-ci.com/LabShare/lb-services-auth.svg?branch=master)](https://travis-ci.com/LabShare/lb-services-auth)
+[![Build Status](https://travis-ci.com/LabShare/lb-services-auth.svg?branch=master)](https://travis-ci.com/LabShare/lb-services-auth) [![Greenkeeper badge](https://badges.greenkeeper.io/LabShare/lb-services-auth.svg)](https://greenkeeper.io/)
 
 # Install
 
